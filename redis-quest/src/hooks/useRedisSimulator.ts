@@ -30,185 +30,135 @@ export const useRedisSimulator = () => {
 
     try {
       switch (cmd) {
+        case 'PING':
+          message = 'PONG';
+          break;
         case 'SET': {
           const [key, val] = args;
           if (!key || !val) throw new Error('ERR wrong number of arguments for "SET" command');
           newStore[key] = {
             type: 'string',
             data: val,
-            encoding: 'SDS',
+            encoding: val.length < 44 ? 'embstr' : 'raw',
             len: val.length,
-            free: 0
+            free: 0,
+            refcount: 1,
+            idletime: 0
           };
           message = 'OK';
           break;
         }
         case 'GET': {
           const [key] = args;
-          if (!key) throw new Error('ERR wrong number of arguments for "GET" command');
           const entry = store[key];
-          if (!entry) {
-            message = '(nil)';
-          } else if (entry.type !== 'string') {
-            throw new Error('WRONGTYPE Operation against a key holding the wrong kind of value');
-          } else {
-            message = `"${entry.data}"`;
-          }
+          if (!entry) message = '(nil)';
+          else if (entry.type !== 'string') throw new Error('WRONGTYPE ...');
+          else message = `"${entry.data}"`;
           break;
         }
         case 'INCR': {
           const [key] = args;
-          if (!key) throw new Error('ERR wrong number of arguments for "INCR" command');
           const entry = store[key];
-          let val = 0;
-          if (entry) {
-            if (entry.type !== 'string') throw new Error('WRONGTYPE ...');
-            val = parseInt(entry.data, 10);
-            if (isNaN(val)) throw new Error('ERR value is not an integer or out of range');
-          }
+          let val = entry ? parseInt(entry.data, 10) : 0;
           val += 1;
           newStore[key] = {
             type: 'string',
             data: val.toString(),
             encoding: 'int',
             len: val.toString().length,
-            free: 0
+            refcount: 1,
+            idletime: 0
           };
           message = `(integer) ${val}`;
           break;
         }
-        case 'DEL': {
-          const [key] = args;
-          if (newStore[key]) {
-            delete newStore[key];
-            message = '(integer) 1';
-          } else {
-            message = '(integer) 0';
-          }
-          break;
-        }
         case 'LPUSH': {
           const [key, ...vals] = args;
-          if (!key || vals.length === 0) throw new Error('ERR wrong number of arguments');
           let entry = newStore[key];
-          if (entry && entry.type !== 'list') throw new Error('WRONGTYPE ...');
           const list = entry ? [...entry.data] : [];
           vals.forEach(v => list.unshift(v));
-          newStore[key] = {
-            type: 'list',
-            data: list,
-            encoding: 'QuickList',
-            len: list.length
-          };
+          newStore[key] = { type: 'list', data: list, encoding: 'quicklist', len: list.length };
           message = `(integer) ${list.length}`;
-          break;
-        }
-        case 'LRANGE': {
-          const [key, start, stop] = args;
-          const entry = store[key];
-          if (!entry) {
-            message = '(empty array)';
-          } else if (entry.type !== 'list') {
-            throw new Error('WRONGTYPE ...');
-          } else {
-            const list = entry.data;
-            const s = parseInt(start, 10);
-            const e = parseInt(stop, 10);
-            const result = list.slice(s, e === -1 ? undefined : e + 1);
-            message = result.map((v: string, i: number) => `${i + 1}) "${v}"`).join('\n');
-          }
           break;
         }
         case 'HSET': {
           const [key, field, val] = args;
-          if (!key || !field || !val) throw new Error('ERR wrong number of arguments');
           let entry = newStore[key];
-          if (entry && entry.type !== 'hash') throw new Error('WRONGTYPE ...');
           const hash = entry ? { ...entry.data } : {};
           const isNew = !hash[field];
           hash[field] = val;
-          newStore[key] = {
-            type: 'hash',
-            data: hash,
-            encoding: Object.keys(hash).length < 5 ? 'Ziplist' : 'HashTable',
-            len: Object.keys(hash).length
-          };
+          newStore[key] = { type: 'hash', data: hash, encoding: 'listpack', len: Object.keys(hash).length };
           message = `(integer) ${isNew ? 1 : 0}`;
           break;
         }
-        case 'HGETALL': {
-          const [key] = args;
-          const entry = store[key];
-          if (!entry) {
-            message = '(empty array)';
-          } else if (entry.type !== 'hash') {
-            throw new Error('WRONGTYPE ...');
-          } else {
-            const hash = entry.data;
-            const result = [];
-            let i = 1;
-            for (const f in hash) {
-              result.push(`${i++}) "${f}"`);
-              result.push(`${i++}) "${hash[f]}"`);
-            }
-            message = result.join('\n');
-          }
+        case 'SADD': {
+          const [key, member] = args;
+          let entry = newStore[key];
+          const set = entry ? new Set(entry.data) : new Set();
+          const isNew = !set.has(member);
+          set.add(member);
+          newStore[key] = { type: 'set', data: Array.from(set), encoding: 'intset', len: set.size };
+          message = `(integer) ${isNew ? 1 : 0}`;
           break;
         }
         case 'ZADD': {
           const [key, score, member] = args;
-          if (!key || !score || !member) throw new Error('ERR wrong number of arguments');
           let entry = newStore[key];
-          if (entry && entry.type !== 'zset') throw new Error('WRONGTYPE ...');
           const zset = entry ? [...entry.data] : [];
-          const scoreNum = parseFloat(score);
-          if (isNaN(scoreNum)) throw new Error('ERR value is not a valid float');
-          
-          const index = zset.findIndex(item => item.member === member);
-          if (index !== -1) {
-            zset[index].score = scoreNum;
-          } else {
-            zset.push({ member, score: scoreNum });
-          }
+          const idx = zset.findIndex(i => i.member === member);
+          if (idx !== -1) zset[idx].score = parseFloat(score);
+          else zset.push({ member, score: parseFloat(score) });
           zset.sort((a, b) => a.score - b.score);
-          
-          newStore[key] = {
-            type: 'zset',
-            data: zset,
-            encoding: 'SkipList',
-            len: zset.length
-          };
-          message = `(integer) ${index === -1 ? 1 : 0}`;
+          newStore[key] = { type: 'zset', data: zset, encoding: 'skiplist', len: zset.length };
+          message = `(integer) 1`;
           break;
         }
-        case 'ZRANGE': {
-          const [key, start, stop, withScores] = args;
+        case 'OBJECT': {
+          const [sub, key] = args;
           const entry = store[key];
-          if (!entry) {
-            message = '(empty array)';
-          } else if (entry.type !== 'zset') {
-            throw new Error('WRONGTYPE ...');
-          } else {
-            const zset = entry.data;
-            const s = parseInt(start, 10);
-            const e = parseInt(stop, 10);
-            const slice = zset.slice(s, e === -1 ? undefined : e + 1);
-            const result = [];
-            let i = 1;
-            for (const item of slice) {
-              result.push(`${i++}) "${item.member}"`);
-              if (withScores?.toUpperCase() === 'WITHSCORES') {
-                result.push(`${i++}) "${item.score}"`);
-              }
-            }
-            message = result.join('\n');
-          }
+          if (!entry) message = '(nil)';
+          else if (sub.toUpperCase() === 'ENCODING') message = `"${entry.encoding}"`;
+          else if (sub.toUpperCase() === 'REFCOUNT') message = `(integer) ${entry.refcount || 1}`;
+          else if (sub.toUpperCase() === 'IDLETIME') message = `(integer) ${entry.idletime || 0}`;
           break;
         }
-        case 'FLUSHALL': {
-          setStore({});
-          setLastMessage('OK');
-          return 'OK';
+        case 'INFO':
+          message = '# Replication\nrole:master\nconnected_slaves:2\nmaster_replid:abc123xyz\nmaster_offset:456';
+          break;
+        case 'SAVE':
+          message = 'OK';
+          break;
+        case 'MULTI':
+          message = 'OK';
+          break;
+        case 'SENTINEL':
+          message = '1) "127.0.0.1"\n2) "6379"';
+          break;
+        case 'CLUSTER':
+          message = '1) 1) (integer) 0\n   2) (integer) 16383\n   3) 1) "127.0.0.1"\n      2) (integer) 6379';
+          break;
+        case 'XADD':
+          message = `"${Date.now()}-0"`;
+          break;
+        case 'CONFIG':
+          message = '1) "maxmemory"\n2) "0"';
+          break;
+        case 'MODULE':
+          message = '(empty array)';
+          break;
+        case 'EXPIRE': {
+          const [key, secs] = args;
+          if (newStore[key]) {
+            setTimeout(() => {
+              setStore(curr => {
+                const u = { ...curr };
+                delete u[key];
+                return u;
+              });
+            }, parseInt(secs) * 1000);
+            message = '(integer) 1';
+          } else message = '(integer) 0';
+          break;
         }
         default:
           message = `(error) ERR unknown command '${cmd}'`;
@@ -217,7 +167,6 @@ export const useRedisSimulator = () => {
       setLastMessage(message);
       return message;
     } catch (err: any) {
-      setLastMessage(`(error) ${err.message}`);
       return `(error) ${err.message}`;
     }
   }, [store]);

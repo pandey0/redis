@@ -16,241 +16,234 @@ export const levels: Level[] = [
     id: 1,
     title: "Mission 1: The Speed of Light",
     content: `
-      ### Why is Redis so fast?
-      Redis stores all data in **RAM**, not on disk. RAM access is measured in **nanoseconds**, while disk is measured in **milliseconds**.
-      
-      ### Core Architectural Pillar:
-      **Single-Threaded Event Loop**: Redis uses one main thread to handle all commands. This avoids the overhead of **locks** and **context switching** found in multi-threaded databases.
+      ### Baseline Health Check
+      Redis is so fast because it works directly in RAM. Let's verify the connection speed.
     `,
     challenges: [
       {
-        description: "Let's start by checking the heartbeat of the server. The `PING` command is used to test if a connection is still alive. \n\n[EXAMPLE]: Type `PING` and the server will respond with `PONG`.",
+        description: "Test the connection heartbeat. \n\n[SYNTAX]: `PING` \n[EXPECTED]: Server will respond with `PONG` in microseconds.",
         expectedCommand: "PING",
-        hint: "Just type PING in the terminal."
+        hint: "Type PING"
       }
     ]
   },
   {
     id: 2,
-    title: "Mission 2: The String King (SDS)",
+    title: "Mission 2: Global API Rate Limiter",
     content: `
-      ### Strings & SDS
-      Strings are the basic building blocks. Internally, Redis uses **SDS (Simple Dynamic Strings)**.
-      
-      ### Key Commands:
-      - \`SET key value\`: Store data.
-      - \`GET key\`: Retrieve data.
-      - \`INCR key\`: Atomic increment for counters.
+      ### Use Case: Brute-Force Protection
+      Prevent attackers from guessing passwords by counting their attempts in RAM.
     `,
     challenges: [
       {
-        description: "The `SET` command stores a value. Let's initialize a rate limit counter. \n\n[SYNTAX]: `SET key value` \n[EXAMPLE]: `SET mykey 10` \n\nGoal: Store '100' in a key named 'api:limit'.",
-        expectedCommand: "SET api:limit 100",
-        hint: "Type: SET api:limit 100"
+        description: "Initialize a counter for a user. Start with 1 attempt. \n\n[SYNTAX]: `SET key value` \n[GOAL]: Store '1' in 'login:user123'.",
+        expectedCommand: "SET login:user123 1",
+        hint: "Type: SET login:user123 1"
       },
       {
-        description: "The `INCR` command increases a number by 1 atomically. This is perfect for tracking API hits. \n\n[SYNTAX]: `INCR key` \n[EXAMPLE]: `INCR mycounter` \n\nGoal: Increment the 'api:limit' you just created.",
-        expectedCommand: "INCR api:limit",
-        hint: "Type: INCR api:limit"
+        description: "The user just tried again. Increment the counter atomically. \n\n[SYNTAX]: `INCR key` \n[GOAL]: Increment 'login:user123'.",
+        expectedCommand: "INCR login:user123",
+        hint: "Type: INCR login:user123"
       }
     ]
   },
   {
     id: 3,
-    title: "Mission 3: The Task Queue (Lists)",
+    title: "Mission 3: Background Task Queue",
     content: `
-      ### Redis Lists
-      Lists are ordered collections. They are implemented as **QuickLists**.
-      
-      ### Use Case: Message Queues
-      - \`LPUSH\`: Add to the front (Left).
-      - \`RPUSH\`: Add to the back (Right).
+      ### Use Case: Async Processing
+      Offload heavy tasks (like sending emails) to a background queue.
     `,
     challenges: [
       {
-        description: "Use `LPUSH` to add an item to the start of a list. This is how you build a 'First-In, Last-Out' stack or a queue. \n\n[SYNTAX]: `LPUSH listname value` \n[EXAMPLE]: `LPUSH tasks 'mow lawn'` \n\nGoal: Add 'job:1' to a list called 'work-queue'.",
-        expectedCommand: "LPUSH work-queue job:1",
-        hint: "Type: LPUSH work-queue job:1"
+        description: "Push a new 'welcome_email' task into the system queue. \n\n[SYNTAX]: `LPUSH list value` \n[GOAL]: Add 'email:send' to 'queue:email'.",
+        expectedCommand: "LPUSH queue:email email:send",
+        hint: "Type: LPUSH queue:email email:send"
       }
     ]
   },
   {
     id: 4,
-    title: "Mission 4: The Object Map (Hashes)",
+    title: "Mission 4: High-Performance User Profiles",
     content: `
-      ### Redis Hashes
-      Hashes are maps between string fields and string values. Perfect for **Objects**.
+      ### Use Case: Fast Profile Retrieval
+      Store user objects as Hashes to avoid expensive JSON parsing.
     `,
     challenges: [
       {
-        description: "Instead of storing a JSON string, use `HSET` to store individual fields. This is more memory-efficient. \n\n[SYNTAX]: `HSET key field value` \n[EXAMPLE]: `HSET car color red` \n\nGoal: Create a user hash 'user:101' with a field 'name' set to 'Arpit'.",
-        expectedCommand: "HSET user:101 name Arpit",
-        hint: "Type: HSET user:101 name Arpit"
+        description: "Create a profile. Set the 'name' to 'Arpit'. \n\n[SYNTAX]: `HSET key field value` \n[GOAL]: Set name in 'user:456'.",
+        expectedCommand: "HSET user:456 name Arpit",
+        hint: "Type: HSET user:456 name Arpit"
+      },
+      {
+        description: "Update the user's status to 'Online'. \n\n[GOAL]: Set 'status' to 'online' in 'user:456'.",
+        expectedCommand: "HSET user:456 status online",
+        hint: "Type: HSET user:456 status online"
       }
     ]
   },
   {
     id: 5,
-    title: "Mission 5: Unique ID Lab (Sets)",
+    title: "Mission 5: Unique Analytics Tracker",
     content: `
-      ### Redis Sets
-      Sets are unordered collections of **unique** strings. No duplicates allowed!
+      ### Use Case: Real-time Unique Visitors
+      Count unique users across your site without duplicates.
     `,
     challenges: [
       {
-        description: "The `SADD` command adds a member to a set. If the member already exists, Redis ignores it. \n\n[SYNTAX]: `SADD setname member` \n[EXAMPLE]: `SADD tags tech` \n\nGoal: Add 'user_a' to a set called 'unique_visitors'.",
-        expectedCommand: "SADD unique_visitors user_a",
-        hint: "Type: SADD unique_visitors user_a"
+        description: "Track a visitor. If they return, Redis will ignore them. \n\n[SYNTAX]: `SADD set member` \n[GOAL]: Add 'user_a' to 'stats:unique'.",
+        expectedCommand: "SADD stats:unique user_a",
+        hint: "Type: SADD stats:unique user_a"
       }
     ]
   },
   {
     id: 6,
-    title: "Mission 6: The Global Leaderboard (Sorted Sets)",
+    title: "Mission 6: Tournament Leaderboard",
     content: `
-      ### Sorted Sets (ZSet)
-      Every member has a **Score**. Redis keeps them sorted by that score automatically.
+      ### Use Case: Gaming Rankings
+      Keep millions of players sorted by score in real-time.
     `,
     challenges: [
       {
-        description: "Use `ZADD` to build a real-time leaderboard. The score comes before the member name. \n\n[SYNTAX]: `ZADD setname score member` \n[EXAMPLE]: `ZADD highscores 99 goku` \n\nGoal: Add 'player1' to 'leaderboard' with a score of '500'.",
-        expectedCommand: "ZADD leaderboard 500 player1",
-        hint: "Type: ZADD leaderboard 500 player1"
+        description: "Add a pro player to the board. \n\n[SYNTAX]: `ZADD set score member` \n[GOAL]: Add 'player1' with score 5000 to 'rankings'.",
+        expectedCommand: "ZADD rankings 5000 player1",
+        hint: "Type: ZADD rankings 5000 player1"
       }
     ]
   },
   {
     id: 7,
-    title: "Mission 7: Under the Hood (Memory Architecture)",
+    title: "Mission 7: Memory Optimization Audit",
     content: `
-      ### The redisObject
-      Every value is wrapped in a \`redisObject\` struct. 
+      ### Internal Inspection
+      Check how Redis is physically storing your data to optimize RAM usage.
     `,
     challenges: [
       {
-        description: "Redis uses a custom string structure to avoid C string limitations. What is this structure called? \n\n[HINT]: Look at the 'Encoding' in X-Ray vision for a string. \n\nGoal: Type 'SDS' to confirm knowledge.",
-        expectedCommand: "SDS",
-        hint: "Type: SDS"
+        description: "Inspect the 'login:user123' counter. Is it an integer or a string? \n\n[SYNTAX]: `OBJECT ENCODING key` \n[GOAL]: Audit 'login:user123'.",
+        expectedCommand: "OBJECT ENCODING login:user123",
+        hint: "Type: OBJECT ENCODING login:user123"
       }
     ]
   },
   {
     id: 8,
-    title: "Mission 8: Persistence Shield (RDB & AOF)",
+    title: "Mission 8: Emergency Manual Backup",
     content: `
-      ### Data Safety
-      Redis can save to disk using Snapshots (RDB) or Logs (AOF).
+      ### Data Durability
+      Even though Redis is in RAM, we must sometimes force a backup to disk.
     `,
     challenges: [
       {
-        description: "Which persistence method logs every single write operation to ensure zero data loss? \n\n[CHOICE]: RDB (Snapshots) or AOF (Append Only File). \n\nGoal: Type 'AOF' to proceed.",
-        expectedCommand: "AOF",
-        hint: "Type: AOF"
+        description: "Perform an immediate synchronous snapshot of the memory. \n\n[SYNTAX]: `SAVE` \n[GOAL]: Write memory to 'dump.rdb'.",
+        expectedCommand: "SAVE",
+        hint: "Type SAVE"
       }
     ]
   },
   {
     id: 9,
-    title: "Mission 9: The Shadow Clone (Replication)",
+    title: "Mission 9: High Availability Audit",
     content: `
-      ### Scaling Reads
-      Master handles writes, Replicas handle reads.
+      ### Replication Monitoring
+      Ensure your replicas are connected and syncing with the Master.
     `,
     challenges: [
       {
-        description: "Replicas are usually set to a specific mode to prevent data inconsistency. Are they 'Read-Only' or 'Writable'? \n\nGoal: Type 'Read-Only' if you think replicas should only be read from.",
-        expectedCommand: "Read-Only",
-        hint: "Type: Read-Only"
+        description: "Check the replication health status. \n\n[SYNTAX]: `INFO replication` \n[GOAL]: Verify slave connections.",
+        expectedCommand: "INFO replication",
+        hint: "Type: INFO replication"
       }
     ]
   },
   {
     id: 10,
-    title: "Mission 10: The Watchtower (Sentinel)",
+    title: "Mission 10: Failover Intelligence",
     content: `
-      ### Failover
-      Sentinel promotes a Replica if the Master dies.
+      ### Redis Sentinel
+      Query the 'Watchman' to find the current active master.
     `,
     challenges: [
       {
-        description: "Sentinel needs a minimum number of 'votes' to decide a Master is dead. What is this count called? \n\n[HINT]: It starts with Q. \n\nGoal: Type 'Quorum'.",
-        expectedCommand: "Quorum",
-        hint: "Type: Quorum"
+        description: "Ask Sentinel for the IP of the current master 'mymaster'. \n\n[SYNTAX]: `SENTINEL get-master-addr-by-name name` \n[GOAL]: Find the leader.",
+        expectedCommand: "SENTINEL get-master-addr-by-name mymaster",
+        hint: "Type: SENTINEL get-master-addr-by-name mymaster"
       }
     ]
   },
   {
     id: 11,
-    title: "Mission 11: The Sharded Kingdom (Cluster)",
+    title: "Mission 11: Cluster Sharding Topology",
     content: `
-      ### Hash Slots
-      Redis Cluster uses slots to distribute data.
+      ### Redis Cluster
+      Horizontal scaling splits data across 16,384 slots. Let's see the map.
     `,
     challenges: [
       {
-        description: "How many total hash slots does a Redis Cluster have? \n\n[HINT]: It's a fixed number used to map keys to nodes. \n\nGoal: Type '16384'.",
-        expectedCommand: "16384",
-        hint: "Type: 16384"
+        description: "List the hash slot assignments for all nodes. \n\n[SYNTAX]: `CLUSTER SLOTS` \n[GOAL]: Map the data distribution.",
+        expectedCommand: "CLUSTER SLOTS",
+        hint: "Type: CLUSTER SLOTS"
       }
     ]
   },
   {
     id: 12,
-    title: "Mission 12: The Atomic Vault (Transactions)",
+    title: "Mission 12: Atomic Multi-Step Update",
     content: `
-      ### MULTI & EXEC
-      Group commands to run them all at once without interruption.
+      ### Redis Transactions
+      Execute a group of commands without anyone else interrupting.
     `,
     challenges: [
       {
-        description: "Transactions in Redis are started with a specific keyword. It puts Redis into 'queueing' mode. \n\n[SYNTAX]: Type the command to start a transaction. \n\nGoal: Type 'MULTI'.",
+        description: "Begin a transaction block. \n\n[SYNTAX]: `MULTI` \n[GOAL]: Put Redis in 'Queueing' mode.",
         expectedCommand: "MULTI",
-        hint: "Type: MULTI"
+        hint: "Type MULTI"
       }
     ]
   },
   {
     id: 13,
-    title: "Mission 13: The Radio Tower (Pub/Sub & Streams)",
+    title: "Mission 13: Real-time Event Logging",
     content: `
-      ### Messaging
-      Use Pub/Sub for chats, Streams for event logs.
+      ### Redis Streams
+      Create an append-only log of every user action for auditing.
     `,
     challenges: [
       {
-        description: "Which command is used to add a new message to a Stream? \n\n[SYNTAX]: `XADD stream_name * field value` \n\nGoal: Type 'XADD' to acknowledge.",
-        expectedCommand: "XADD",
-        hint: "Type: XADD"
+        description: "Log a login event for user 'arpit' into the stream. \n\n[SYNTAX]: `XADD key * field value` \n[GOAL]: Add to 'stream:auth'.",
+        expectedCommand: "XADD stream:auth * user arpit",
+        hint: "Type: XADD stream:auth * user arpit"
       }
     ]
   },
   {
     id: 14,
-    title: "Mission 14: The Librarian (Eviction & LRU)",
+    title: "Mission 14: Resource Configuration",
     content: `
-      ### Memory Management
-      What happens when RAM is full?
+      ### Eviction Policies
+      Control how Redis deletes data when the RAM is full.
     `,
     challenges: [
       {
-        description: "The most common eviction policy removes keys that haven't been used for the longest time. What is the 3-letter acronym for this? \n\nGoal: Type 'LRU'.",
-        expectedCommand: "LRU",
-        hint: "Type: LRU"
+        description: "Check the current memory ceiling. \n\n[SYNTAX]: `CONFIG GET maxmemory` \n[GOAL]: Audit RAM limits.",
+        expectedCommand: "CONFIG GET maxmemory",
+        hint: "Type: CONFIG GET maxmemory"
       }
     ]
   },
   {
     id: 15,
-    title: "Mission 15: The Future (AI & Vectors)",
+    title: "Mission 15: Module Discovery",
     content: `
-      ### AI Embeddings
-      Search for data by 'meaning' instead of exact keywords.
+      ### Advanced Extensions
+      Discover loaded modules like Search or JSON.
     `,
     challenges: [
       {
-        description: "Redis uses an algorithm to find the closest vectors in a multi-dimensional space. What is this 3-letter algorithm called? \n\n[HINT]: K-Nearest Neighbors. \n\nGoal: Type 'KNN'.",
-        expectedCommand: "KNN",
-        hint: "Type: KNN"
+        description: "List all active extensions in the server. \n\n[SYNTAX]: `MODULE LIST` \n[GOAL]: Identify extra capabilities.",
+        expectedCommand: "MODULE LIST",
+        hint: "Type: MODULE LIST"
       }
     ]
   }

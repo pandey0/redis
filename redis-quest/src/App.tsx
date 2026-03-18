@@ -5,6 +5,7 @@ import { Terminal } from './components/Terminal/Terminal';
 import { MemoryPool } from './components/Visualizer/MemoryPool';
 import { LevelContent } from './components/Theory/LevelContent';
 import { Academy } from './components/Theory/Academy';
+import { Lab } from './components/Theory/Lab';
 import { levels } from './data/levels';
 import './App.css';
 
@@ -15,16 +16,42 @@ function App() {
   const [xRayMode, setXRayMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAcademy, setShowAcademy] = useState(false);
+  const [showLab, setShowLab] = useState(false);
   
   const { store, execute } = useReal ? realRedis : simulator;
 
-  const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
-  const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0);
-  const [xp, setXp] = useState(0);
+  // Load progress from localStorage
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(() => {
+    return parseInt(localStorage.getItem('redis-quest-level') || '0', 10);
+  });
+  const [currentChallengeIndex, setCurrentChallengeIndex] = useState(() => {
+    return parseInt(localStorage.getItem('redis-quest-challenge') || '0', 10);
+  });
+  const [xp, setXp] = useState(() => {
+    return parseInt(localStorage.getItem('redis-quest-xp') || '0', 10);
+  });
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const level = levels[currentLevelIndex];
+  // Define current level and challenge based on state
+  const level = levels[currentLevelIndex] || levels[0];
   const challenge = level.challenges[currentChallengeIndex];
+
+  // Persistence Sync
+  useEffect(() => {
+    localStorage.setItem('redis-quest-level', currentLevelIndex.toString());
+    localStorage.setItem('redis-quest-challenge', currentChallengeIndex.toString());
+    localStorage.setItem('redis-quest-xp', xp.toString());
+  }, [currentLevelIndex, currentChallengeIndex, xp]);
+
+  // System Stats HUD Logic
+  const [uptime, setUptime] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setUptime(p => p + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const totalKeys = Object.keys(store).length;
+  const estimatedMemory = JSON.stringify(store).length * 2; // Rough estimate in bytes
 
   const handleExecute = (cmd: string) => {
     setIsProcessing(true);
@@ -94,9 +121,15 @@ function App() {
         <div className="mode-selector">
           <button 
             className="btn-academy"
-            onClick={() => setShowAcademy(true)}
+            onClick={() => { setShowAcademy(true); setShowLab(false); }}
           >
             Redis Academy 📚
+          </button>
+          <button 
+            className={`btn-lab ${showLab ? 'active' : ''}`}
+            onClick={() => { setShowLab(!showLab); setShowAcademy(false); }}
+          >
+            Practical Lab 🧪
           </button>
         </div>
 
@@ -120,32 +153,53 @@ function App() {
           <div className="stat-item">XP: <span style={{color: 'var(--success-color)'}}>{xp}</span></div>
           <div className="stat-item">MISSION: <span style={{color: 'var(--accent-color)'}}>{currentLevelIndex + 1}/{levels.length}</span></div>
         </div>
+
+        <div className="system-hud" style={{display: 'flex', gap: '20px', padding: '0 20px', borderLeft: '1px solid var(--border-color)', marginLeft: '20px'}}>
+          <div style={{textAlign: 'right'}}>
+            <div style={{fontSize: '8px', color: 'var(--text-secondary)'}}>RAM USAGE</div>
+            <div style={{fontSize: '11px', fontFamily: 'monospace', color: 'var(--warning-color)'}}>{estimatedMemory} bytes</div>
+          </div>
+          <div style={{textAlign: 'right'}}>
+            <div style={{fontSize: '8px', color: 'var(--text-secondary)'}}>ACTIVE KEYS</div>
+            <div style={{fontSize: '11px', fontFamily: 'monospace', color: 'var(--accent-color)'}}>{totalKeys}</div>
+          </div>
+          <div style={{textAlign: 'right'}}>
+            <div style={{fontSize: '8px', color: 'var(--text-secondary)'}}>UPTIME</div>
+            <div style={{fontSize: '11px', fontFamily: 'monospace', color: 'var(--success-color)'}}>{uptime}s</div>
+          </div>
+        </div>
       </header>
       
-      <main className="app-main">
-        {/* Column 1: Theory */}
-        <section className="panel">
-          <LevelContent 
-            level={level} 
-            totalLevels={levels.length}
-            onNext={nextLevel} 
-            onPrevious={prevLevel}
-            isFirst={currentLevelIndex === 0}
-            isLast={currentLevelIndex === levels.length - 1}
-            currentChallengeIndex={currentChallengeIndex}
-          />
-        </section>
+      <main className={`app-main ${showLab ? 'lab-mode' : ''}`}>
+        {showLab ? (
+          <Lab onExecute={handleExecute} store={store} />
+        ) : (
+          <>
+            {/* Column 1: Theory */}
+            <section className="panel">
+              <LevelContent 
+                level={level} 
+                totalLevels={levels.length}
+                onNext={nextLevel} 
+                onPrevious={prevLevel}
+                isFirst={currentLevelIndex === 0}
+                isLast={currentLevelIndex === levels.length - 1}
+                currentChallengeIndex={currentChallengeIndex}
+              />
+            </section>
 
-        {/* Column 2: Terminal */}
-        <section className="panel terminal-panel">
-          <div className="terminal-header">Interactive Terminal</div>
-          <Terminal onExecute={handleExecute} />
-        </section>
+            {/* Column 2: Terminal */}
+            <section className="panel terminal-panel">
+              <div className="terminal-header">Interactive Terminal</div>
+              <Terminal onExecute={handleExecute} />
+            </section>
 
-        {/* Column 3: Visualizer */}
-        <section className="panel">
-          <MemoryPool store={store} xRayMode={xRayMode} />
-        </section>
+            {/* Column 3: Visualizer */}
+            <section className="panel">
+              <MemoryPool store={store} xRayMode={xRayMode} />
+            </section>
+          </>
+        )}
       </main>
 
       {showAcademy && (

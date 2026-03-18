@@ -7,6 +7,8 @@ interface TerminalProps {
 export const Terminal: React.FC<TerminalProps> = ({ onExecute }) => {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
+  const [commandBuffer, setCommandBuffer] = useState<string[]>([]);
+  const [bufferIndex, setBufferIndex] = useState(-1);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,10 +20,31 @@ export const Terminal: React.FC<TerminalProps> = ({ onExecute }) => {
   const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       const currentInput = input;
+      if (!currentInput.trim()) return;
+
       setInput('');
+      setCommandBuffer(prev => [currentInput, ...prev].slice(0, 50));
+      setBufferIndex(-1);
       
       const result = await onExecute(currentInput);
       setHistory(prev => [...prev, `> ${currentInput}`, result]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (bufferIndex < commandBuffer.length - 1) {
+        const newIndex = bufferIndex + 1;
+        setBufferIndex(newIndex);
+        setInput(commandBuffer[newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (bufferIndex > 0) {
+        const newIndex = bufferIndex - 1;
+        setBufferIndex(newIndex);
+        setInput(commandBuffer[newIndex]);
+      } else if (bufferIndex === 0) {
+        setBufferIndex(-1);
+        setInput('');
+      }
     }
   };
 

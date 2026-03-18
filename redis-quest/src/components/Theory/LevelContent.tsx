@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Level } from '../../data/levels';
+import { MissionVisualizer } from './MissionVisualizer';
 
 interface LevelContentProps {
   level: Level;
@@ -51,7 +52,11 @@ export const LevelContent: React.FC<LevelContentProps> = ({
       </div>
       
       <div className="level-content">
-        <h1 style={{fontFamily: 'Orbitron', letterSpacing: '1px', fontSize: '20px'}}>{level.title}</h1>
+        <h1 style={{fontFamily: 'Orbitron', letterSpacing: '1px', fontSize: '20px', marginBottom: '20px'}}>{level.title}</h1>
+        
+        {/* ACTUAL PICTORIAL VISUALIZER */}
+        <MissionVisualizer levelId={level.id} />
+
         <div className="content-text" dangerouslySetInnerHTML={{ 
           __html: level.content.replace(/\n/g, '<br/>')
             .replace(/### (.*)/g, '<h3 style="color: var(--accent-color); font-size: 14px; margin-top: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">$1</h3>')
